@@ -2,23 +2,53 @@
 from . import commands
 from .lib import fusionAddInUtils as futil
 
+import adsk.core, adsk.fusion, adsk.cam, traceback
+import mysql.connector
+import tkinter as tk
+from tkinter import simpledialog
+
+app = adsk.core.Application.get()
+ui = app.userInterface
+
+connection = None
+
+def show_login_dialog():
+    global connection
+
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+
+    server_ip = simpledialog.askstring("Server IP", "Enter the server IP:")
+    db_name = simpledialog.askstring("Database Name", "Enter the database name:")
+    user_name = simpledialog.askstring("User Name", "Enter the user name:")
+    password = simpledialog.askstring("Password", "Enter the password:", show='*')
+
+    try:
+        connection = mysql.connector.connect(
+            host=server_ip,
+            database=db_name,
+            user=user_name,
+            password=password
+        )
+        if connection.is_connected():
+            ui.messageBox("Successfully connected to the database")
+    except mysql.connector.Error as err:
+        ui.messageBox(f"Error: {err}")
+        connection = None
+
 
 def run(context):
     try:
-        # This will run the start function in each of your commands as defined in commands/__init__.py
-        commands.start()
-
+        show_login_dialog()
     except:
-        futil.handle_error('run')
+        ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 
 def stop(context):
+    global connection
     try:
-        # Remove all of the event handlers your app has created
-        futil.clear_handlers()
-
-        # This will run the start function in each of your commands as defined in commands/__init__.py
-        commands.stop()
-
+        if connection and connection.is_connected():
+            connection.close()
+            ui.messageBox("Database connection closed")
     except:
-        futil.handle_error('stop')
+        ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
